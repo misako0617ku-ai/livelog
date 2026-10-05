@@ -134,7 +134,7 @@ function parseLiveDates(listStr: string): LiveDate[] {
 function getTargetMonths(): string[] {
   const now = new Date()
   const months: string[] = []
-  for (let i = -1; i <= 4; i++) {
+  for (let i = 0; i <= 2; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
     const y = d.getFullYear()
     const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -269,7 +269,7 @@ export async function POST() {
       })
     })
 
-    await pLimit(tasks, 10) // 同時10件で並列実行
+    await pLimit(tasks, 25) // 同時25件で並列実行
 
     // バッチupsert（100件ずつ・URL重複は無視）
     let inserted = 0
