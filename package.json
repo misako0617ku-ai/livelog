@@ -1,5 +1,5 @@
 {
-  "name": "otaku-calendar",
+  "name": "livelog",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,19 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.21",
+    "@fullcalendar/daygrid": "^6.1.21",
+    "@fullcalendar/interaction": "^6.1.21",
+    "@fullcalendar/list": "^6.1.21",
+    "@fullcalendar/react": "^6.1.21",
+    "@fullcalendar/timegrid": "^6.1.21",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.2",
+    "dotenv": "^18.0.5",
+    "lucide-react": "^1.52.0",
     "next": "16.3.8",
+    "node-html-parser": "^9.0.4",
+    "playwright": "^1.63.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

@@ -1,69 +1,50 @@
-import Image from "next/image";
+import Link from 'next/link'
+import { CalendarDays, Music, Star } from 'lucide-react'
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
+      <div className="mb-6 flex items-center justify-center w-20 h-20 bg-pink-100 rounded-full">
+        <CalendarDays className="w-10 h-10 text-pink-600" />
+      </div>
+
+      <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        ライブログ
+      </h1>
+      <p className="text-lg text-gray-600 mb-10 max-w-md">
+        推しアーティストのライブ・イベントを一か所で記録・管理。見逃さないために。
+      </p>
+
+      <div className="flex flex-col sm:flex-row gap-4 mb-16">
+        <Link
+          href="/auth/signup"
+          className="flex items-center justify-center gap-2 px-8 py-3 bg-pink-600 text-white rounded-xl font-semibold hover:bg-pink-700 transition-colors"
+        >
+          無料で始める
+        </Link>
+        <Link
+          href="/calendar"
+          className="flex items-center justify-center gap-2 px-8 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
+        >
+          カレンダーを見る
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl w-full">
+        {[
+          { icon: Star, title: 'アーティストをフォロー', desc: '好きなアーティストを登録して、イベントを自動で集める' },
+          { icon: CalendarDays, title: 'カレンダーで一覧管理', desc: '月・週・リスト表示でイベントをわかりやすく確認' },
+          { icon: Music, title: '手動でもイベント追加', desc: '自分で見つけたイベントもすぐに登録できる' },
+        ].map(({ icon: Icon, title, desc }) => (
+          <div key={title} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-left">
+            <div className="flex items-center justify-center w-10 h-10 bg-pink-50 rounded-xl mb-3">
+              <Icon className="w-5 h-5 text-pink-600" />
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-1">{title}</h3>
+            <p className="text-sm text-gray-500">{desc}</p>
+          </div>
+        ))}
+      </div>
     </div>
-  );
+  )
 }
