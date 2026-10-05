@@ -271,12 +271,14 @@ export async function POST() {
 
     await pLimit(tasks, 10) // 同時10件で並列実行
 
-    // バッチinsert（100件ずつ）
+    // バッチupsert（100件ずつ・URL重複は無視）
     let inserted = 0
     const BATCH = 100
     for (let i = 0; i < newEvents.length; i += BATCH) {
       const batch = newEvents.slice(i, i + BATCH)
-      const { error } = await supabase.from('events').insert(batch)
+      const { error } = await supabase
+        .from('events')
+        .upsert(batch, { onConflict: 'url', ignoreDuplicates: true })
       if (!error) inserted += batch.length
     }
 
