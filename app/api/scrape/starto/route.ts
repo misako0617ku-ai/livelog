@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+export const maxDuration = 60 // Vercel Hobby プランの上限
+
 const BASE_URL = 'https://starto.jp'
 
 // STARTOアーティスト一覧（DBのname → STARTOサイトのtag ID）
@@ -171,6 +173,23 @@ async function fetchLiveItems(tagId: number, month: string): Promise<LiveItem[]>
   }
 }
 
+// 同時実行数を制限しながら並列処理するユーティリティ
+async function pLimit<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number
+): Promise<T[]> {
+  const results: T[] = []
+  let index = 0
+  async function worker() {
+    while (index < tasks.length) {
+      const i = index++
+      results[i] = await tasks[i]()
+    }
+  }
+  await Promise.all(Array.from({ length: concurrency }, worker))
+  return results
+}
+
 export async function POST() {
   try {
     const supabase = createAdminClient()
@@ -183,95 +202,90 @@ export async function POST() {
     const existingUrls = new Set(existingEvents?.map(e => e.url) ?? [])
 
     const months = getTargetMonths()
-    let inserted = 0
-    let skipped = 0
 
-    for (const artist of STARTO_ARTISTS) {
+    // 全アーティスト×全月のAPIタスクを並列実行（同時10件）
+    type NewEvent = {
+      artist_id: string
+      title: string
+      start_date: string
+      end_date: null
+      url: string
+      location: string | null
+      description: string | null
+      source: 'bandsintown'
+    }
+    const newEvents: NewEvent[] = []
+
+    const tasks = STARTO_ARTISTS.flatMap(artist => {
       let artistId = artistMap.get(artist.name)
-      if (!artistId) {
-        const { data } = await supabase
-          .from('artists')
-          .insert({ name: artist.name })
-          .select('id')
-          .single()
-        if (data) {
-          artistId = data.id
-          artistMap.set(artist.name, artistId)
-        }
-      }
-      if (!artistId) continue
+      return months.map(month => async () => {
+        if (!artistId) return
 
-      for (const month of months) {
-        // メディア（TV・ラジオ・雑誌・WEB）
-        const mediaItems = await fetchMediaItems(artist.tagId, month)
+        const [mediaItems, liveItems] = await Promise.all([
+          fetchMediaItems(artist.tagId, month),
+          fetchLiveItems(artist.tagId, month),
+        ])
+
         for (const item of mediaItems) {
           const url = `${BASE_URL}/s/p/media/detail/${item.code}`
-          if (existingUrls.has(url)) { skipped++; continue }
-
-          const startDate = buildStartDate(item.year, item.mont, item.day, item.time)
+          if (existingUrls.has(url)) continue
+          existingUrls.add(url)
           const categoryLabel = CATEGORY_LABEL[item.catecode] ?? item.catename
-          const title = `[${categoryLabel}] ${item.name.trim()}`
           const parts = [item.comment1, item.comment2, item.comment3].filter(Boolean)
-          const description = parts.length > 0 ? parts.join('\n') : null
-
-          const { error } = await supabase.from('events').insert({
-            artist_id: artistId,
-            title,
-            start_date: startDate,
+          newEvents.push({
+            artist_id: artistId!,
+            title: `[${categoryLabel}] ${item.name.trim()}`,
+            start_date: buildStartDate(item.year, item.mont, item.day, item.time),
             end_date: null,
             url,
-            description,
+            location: null,
+            description: parts.length > 0 ? parts.join('\n') : null,
             source: 'bandsintown',
           })
-          if (!error) {
-            existingUrls.add(url)
-            inserted++
-          }
         }
 
-        // ライブ・ステージ・イベント（個別日程ごとに1行）
-        const liveItems = await fetchLiveItems(artist.tagId, month)
         for (const item of liveItems) {
           const liveDates = parseLiveDates(item.list ?? '')
           const categoryLabel = CATEGORY_LABEL[item.catecode] ?? item.catename
-
           for (const ld of liveDates) {
-            if (!ld.date) { skipped++; continue }
-            // 対象月のみ処理（前後月のデータが混入するため）
+            if (!ld.date) continue
             const itemMonth = ld.date.slice(0, 7).replace('-', '')
-            if (itemMonth !== month) { skipped++; continue }
-
+            if (itemMonth !== month) continue
             const url = `${BASE_URL}/s/p/live/${item.code}/item/${ld.itemId}`
-            if (existingUrls.has(url)) { skipped++; continue }
-
-            const startDate = `${ld.date}T00:00:00+09:00`
-            const title = `[${categoryLabel}] ${item.name.trim()}`
-            const description = item.comment3 ? item.comment3 : null
-
-            const { error } = await supabase.from('events').insert({
-              artist_id: artistId,
-              title,
-              start_date: startDate,
+            if (existingUrls.has(url)) continue
+            existingUrls.add(url)
+            newEvents.push({
+              artist_id: artistId!,
+              title: `[${categoryLabel}] ${item.name.trim()}`,
+              start_date: `${ld.date}T00:00:00+09:00`,
               end_date: null,
               url,
               location: ld.pref || null,
-              description,
+              description: item.comment3 || null,
               source: 'bandsintown',
             })
-            if (!error) {
-              existingUrls.add(url)
-              inserted++
-            } else {
-              skipped++
-            }
           }
         }
+      })
+    })
 
-        await new Promise(r => setTimeout(r, 80))
-      }
+    await pLimit(tasks, 10) // 同時10件で並列実行
+
+    // バッチinsert（100件ずつ）
+    let inserted = 0
+    const BATCH = 100
+    for (let i = 0; i < newEvents.length; i += BATCH) {
+      const batch = newEvents.slice(i, i + BATCH)
+      const { error } = await supabase.from('events').insert(batch)
+      if (!error) inserted += batch.length
     }
 
-    return NextResponse.json({ success: true, inserted, skipped, months })
+    return NextResponse.json({
+      success: true,
+      inserted,
+      skipped: existingEvents?.length ?? 0,
+      months,
+    })
   } catch (err) {
     console.error('Scrape error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
