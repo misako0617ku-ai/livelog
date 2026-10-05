@@ -143,34 +143,34 @@ function getTargetMonths(): string[] {
   return months
 }
 
-async function fetchMediaItems(tagId: number, month: string): Promise<MediaItem[]> {
+async function fetchJSON(url: string): Promise<unknown> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 5000)
   try {
-    const url = `${BASE_URL}/s/p/api/list/media?dy=${month}&list[]=${tagId}&rw=3000`
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LivelogBot/1.0)' },
-      next: { revalidate: 0 },
+      signal: controller.signal,
+      cache: 'no-store',
     })
-    if (!res.ok) return []
-    const data = await res.json()
-    return data.items ?? []
+    clearTimeout(timer)
+    if (!res.ok) return null
+    return await res.json()
   } catch {
-    return []
+    clearTimeout(timer)
+    return null
   }
 }
 
+async function fetchMediaItems(tagId: number, month: string): Promise<MediaItem[]> {
+  const url = `${BASE_URL}/s/p/api/list/media?dy=${month}&list[]=${tagId}&rw=3000`
+  const data = await fetchJSON(url) as { items?: MediaItem[] } | null
+  return data?.items ?? []
+}
+
 async function fetchLiveItems(tagId: number, month: string): Promise<LiveItem[]> {
-  try {
-    const url = `${BASE_URL}/s/p/api/list/live?dy=${month}&list[]=${tagId}&rw=3000`
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LivelogBot/1.0)' },
-      next: { revalidate: 0 },
-    })
-    if (!res.ok) return []
-    const data = await res.json()
-    return data.items ?? []
-  } catch {
-    return []
-  }
+  const url = `${BASE_URL}/s/p/api/list/live?dy=${month}&list[]=${tagId}&rw=3000`
+  const data = await fetchJSON(url) as { items?: LiveItem[] } | null
+  return data?.items ?? []
 }
 
 // 同時実行数を制限しながら並列処理するユーティリティ
