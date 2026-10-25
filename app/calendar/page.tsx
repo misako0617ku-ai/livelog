@@ -5,13 +5,66 @@ import { createClient } from '@/lib/supabase/client'
 import CalendarView from '@/components/CalendarView'
 import EventModal from '@/components/EventModal'
 import { Plus, Music, RefreshCw } from 'lucide-react'
-import type { Event, Artist } from '@/types'
+import type { Event, Artist, FcMembership } from '@/types'
+import type { FcCalendarEvent } from '@/components/CalendarView'
 import Link from 'next/link'
+
+function computeFcCalendarEvents(memberships: FcMembership[]): FcCalendarEvent[] {
+  const fcEvents: FcCalendarEvent[] = []
+  const now = new Date()
+  const twoYearsAhead = new Date(now)
+  twoYearsAhead.setFullYear(twoYearsAhead.getFullYear() + 2)
+  const sixMonthsAgo = new Date(now)
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+
+  for (const m of memberships) {
+    const [yearStr, monthStr] = m.joined_year_month.split('-')
+    const joinedYear = parseInt(yearStr)
+    const joinedMonth = parseInt(monthStr)
+    const artistName = m.artist?.name ?? 'FC'
+
+    for (let offset = 1; offset <= 3; offset++) {
+      const expiryDate = new Date(joinedYear + offset, joinedMonth, 0)
+      if (expiryDate < sixMonthsAgo || expiryDate > twoYearsAhead) continue
+
+      const renewalStart = new Date(expiryDate)
+      renewalStart.setDate(renewalStart.getDate() - 59)
+      const toStr = (d: Date) => d.toISOString().slice(0, 10)
+
+      fcEvents.push({
+        id: `fc-start-${m.id}-${offset}`,
+        title: `🔔 FC更新開始: ${artistName}`,
+        start: toStr(renewalStart),
+        backgroundColor: '#f59e0b',
+        borderColor: '#d97706',
+        allDay: true,
+        extendedProps: {
+          isFcEvent: true,
+          description: `${artistName} FCの更新手続きが開始されました。\n更新締切: ${toStr(expiryDate)}まで`,
+        },
+      })
+      fcEvents.push({
+        id: `fc-end-${m.id}-${offset}`,
+        title: `⚠️ FC更新締切: ${artistName}`,
+        start: toStr(expiryDate),
+        backgroundColor: '#ef4444',
+        borderColor: '#dc2626',
+        allDay: true,
+        extendedProps: {
+          isFcEvent: true,
+          description: `${artistName} FCの更新締切日です。\nこの日までに更新しないと会員資格が失効します。`,
+        },
+      })
+    }
+  }
+  return fcEvents
+}
 
 export default function CalendarPage() {
   const supabase = createClient()
   const [events, setEvents] = useState<Event[]>([])
   const [followedArtists, setFollowedArtists] = useState<Artist[]>([])
+  const [fcMemberships, setFcMemberships] = useState<FcMembership[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | undefined>()
   const [userId, setUserId] = useState<string | null>(null)
@@ -49,6 +102,13 @@ export default function CalendarPage() {
       setEvents((data as unknown as Event[]) ?? [])
     } else {
       setEvents([])
+    }
+
+    // FC管理情報を取得
+    const fcRes = await fetch('/api/fc-memberships')
+    if (fcRes.ok) {
+      const fcData = await fcRes.json()
+      setFcMemberships(Array.isArray(fcData) ? fcData : [])
     }
 
     setLoading(false)
@@ -159,6 +219,7 @@ export default function CalendarPage() {
       ) : (
         <CalendarView
           events={events}
+          fcEvents={computeFcCalendarEvents(fcMemberships)}
           onDateClick={handleDateClick}
           onEventUpdated={fetchData}
         />

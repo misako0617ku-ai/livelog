@@ -28,3 +28,12 @@ export type UserArtist = {
   created_at: string
   artist?: Artist
 }
+
+export type FcMembership = {
+  id: string
+  user_id: string
+  artist_id: string
+  joined_year_month: string // YYYY-MM
+  created_at: string
+  artist?: { id: string; name: string }
+}
