@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CalendarDays, Music, LogOut, LogIn, Crown } from 'lucide-react'
+import { CalendarDays, Music, LogOut, LogIn, Crown, Settings } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 
@@ -30,7 +30,10 @@ export default function Navbar() {
   const navLinks = [
     { href: '/calendar', label: 'カレンダー', icon: CalendarDays },
     { href: '/artists', label: 'アーティスト', icon: Music },
-    ...(user ? [{ href: '/fc-settings', label: 'FC管理', icon: Crown }] : []),
+    ...(user ? [
+      { href: '/fc-settings', label: 'FC管理', icon: Crown },
+      { href: '/settings', label: '通知設定', icon: Settings },
+    ] : []),
   ]
 
   return (

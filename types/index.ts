@@ -29,6 +29,17 @@ export type UserArtist = {
   artist?: Artist
 }
 
+export type NotificationType = 'fc' | 'live' | 'all'
+
+export type UserNotificationSettings = {
+  id?: string
+  user_id?: string
+  notifications_enabled: boolean
+  notify_types: NotificationType[]
+  notify_days_before: number[]
+  created_at?: string
+}
+
 export type FcMembership = {
   id: string
   user_id: string
