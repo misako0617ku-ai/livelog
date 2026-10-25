@@ -34,6 +34,7 @@ export type FcMembership = {
   user_id: string
   artist_id: string
   joined_year_month: string // YYYY-MM
+  notifications_enabled: boolean
   created_at: string
   artist?: { id: string; name: string }
 }

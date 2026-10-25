@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Crown, Plus, Trash2, CalendarDays } from 'lucide-react'
+import { Crown, Plus, Trash2, CalendarDays, Bell, BellOff } from 'lucide-react'
 import type { FcMembership, Artist } from '@/types'
 
 function computeRenewalDates(joinedYearMonth: string) {
@@ -88,6 +88,19 @@ export default function FcSettingsPage() {
     setSubmitting(false)
   }
 
+  const handleToggleNotification = async (id: string, current: boolean) => {
+    const res = await fetch(`/api/fc-memberships/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notifications_enabled: !current }),
+    })
+    if (res.ok) {
+      setMemberships(prev =>
+        prev.map(m => m.id === id ? { ...m, notifications_enabled: !current } : m)
+      )
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('このFC情報を削除しますか？')) return
     const res = await fetch(`/api/fc-memberships/${id}`, { method: 'DELETE' })
@@ -157,13 +170,29 @@ export default function FcSettingsPage() {
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleDelete(m.id)}
-                    className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                    title="削除"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleToggleNotification(m.id, m.notifications_enabled ?? true)}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        m.notifications_enabled ?? true
+                          ? 'text-amber-500 hover:bg-amber-50'
+                          : 'text-gray-300 hover:bg-gray-50'
+                      }`}
+                      title={m.notifications_enabled ?? true ? '通知ON（クリックでOFF）' : '通知OFF（クリックでON）'}
+                    >
+                      {m.notifications_enabled ?? true
+                        ? <Bell className="w-4 h-4" />
+                        : <BellOff className="w-4 h-4" />
+                      }
+                    </button>
+                    <button
+                      onClick={() => handleDelete(m.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50"
+                      title="削除"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             )
