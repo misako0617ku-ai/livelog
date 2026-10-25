@@ -3,6 +3,9 @@ export type Artist = {
   name: string
   image_url: string | null
   bandsintown_id: string | null
+  starto_tag: number | null
+  jr_tag: string | null
+  parent_id: string | null
   created_at: string
 }
 
@@ -16,7 +19,8 @@ export type Event = {
   end_date: string | null
   url: string | null
   description: string | null
-  source: 'manual' | 'bandsintown'
+  performers: string | null
+  source: 'manual' | 'bandsintown' | 'label'
   created_at: string
   artist?: Artist
 }

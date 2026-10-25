@@ -2,6 +2,9 @@
   "functions": {
     "app/api/scrape/starto/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/scrape/labels/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
@@ -10,8 +13,12 @@
       "schedule": "0 18 * * *"
     },
     {
-      "path": "/api/cron/notify",
+      "path": "/api/cron/sync-labels",
       "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/cron/notify",
+      "schedule": "0 20 * * *"
     }
   ]
 }
