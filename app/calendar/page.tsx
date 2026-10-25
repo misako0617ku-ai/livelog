@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import CalendarView from '@/components/CalendarView'
 import EventModal from '@/components/EventModal'
@@ -71,6 +71,25 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
 
+  // フォロー中アーティストのID集合
+  const artistIdSet = useMemo(
+    () => new Set(followedArtists.map(a => a.id)),
+    [followedArtists]
+  )
+
+  // 親グループを直接フォローしていないメンバーがいる場合:
+  // parentArtistId → 表示するメンバー名（複数人フォロー時は「・」区切り）
+  // cronで取得した新規イベントにも自動適用される
+  const parentDisplayMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const a of followedArtists) {
+      if (!a.parent_id) continue
+      if (artistIdSet.has(a.parent_id)) continue // 親グループも直接フォロー中 → グループ名のまま
+      const prev = map.get(a.parent_id)
+      map.set(a.parent_id, prev ? `${prev}・${a.name}` : a.name)
+    }
+    return map
+  }, [followedArtists, artistIdSet])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
@@ -236,6 +255,7 @@ export default function CalendarPage() {
           fcEvents={computeFcCalendarEvents(fcMemberships)}
           onDateClick={handleDateClick}
           onEventUpdated={fetchData}
+          parentDisplayMap={parentDisplayMap}
         />
       )}
 

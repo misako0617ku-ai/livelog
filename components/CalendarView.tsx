@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -24,6 +24,9 @@ type Props = {
   fcEvents?: FcCalendarEvent[]
   onDateClick: (date: string) => void
   onEventUpdated: () => void
+  // 親グループを直接フォローしていない場合の表示名オーバーライド
+  // key: 親グループの artist_id, value: 表示するメンバー名
+  parentDisplayMap?: Map<string, string>
 }
 
 const ARTIST_COLORS = [
@@ -31,9 +34,33 @@ const ARTIST_COLORS = [
   '#f59e0b', '#ef4444', '#06b6d4', '#84cc16',
 ]
 
-export default function CalendarView({ events, fcEvents = [], onDateClick, onEventUpdated }: Props) {
+export default function CalendarView({ events, fcEvents = [], onDateClick, onEventUpdated, parentDisplayMap }: Props) {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [fcInfo, setFcInfo] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  useEffect(() => {
+    const closePopover = (e: globalThis.Event) => {
+      const popover = document.querySelector('.fc-more-popover')
+      if (!popover) return
+      if (!popover.contains(e.target as Node)) {
+        popover.remove()
+      }
+    }
+    document.addEventListener('touchstart', closePopover, { passive: true })
+    document.addEventListener('mousedown', closePopover)
+    return () => {
+      document.removeEventListener('touchstart', closePopover)
+      document.removeEventListener('mousedown', closePopover)
+    }
+  }, [])
 
   const artistColorMap = new Map<string, string>()
   events.forEach(e => {
@@ -43,20 +70,27 @@ export default function CalendarView({ events, fcEvents = [], onDateClick, onEve
   })
 
   const calendarEvents = [
-    ...events.map(e => ({
+    ...events.map(e => {
+      // 親グループを直接フォローしていない場合はメンバー名で表示
+      const displayName = parentDisplayMap?.get(e.artist_id) ?? e.artist?.name ?? ''
+      return {
       id: e.id,
-      title: `${e.artist?.name ?? ''} ${e.title}`,
+      title: `${displayName} ${e.title}`,
       start: e.start_date,
       end: e.end_date ?? undefined,
       backgroundColor: artistColorMap.get(e.artist_id),
       borderColor: artistColorMap.get(e.artist_id),
       extendedProps: { event: e, isFcEvent: false },
-    })),
+    }}),
     ...fcEvents,
   ]
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleEventClick = (info: any) => {
+    // FullCalendarの内部処理が終わった後にポップオーバーを削除
+    setTimeout(() => {
+      document.querySelectorAll('.fc-more-popover').forEach(el => el.remove())
+    }, 0)
     if (info.event.extendedProps.isFcEvent) {
       setFcInfo(info.event.extendedProps.description)
       return
@@ -71,28 +105,36 @@ export default function CalendarView({ events, fcEvents = [], onDateClick, onEve
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 overflow-hidden">
           <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
           initialView="dayGridMonth"
           locale="ja"
-          headerToolbar={{
+          headerToolbar={isMobile ? {
+            left: 'prev,next',
+            center: 'title',
+            right: 'today',
+          } : {
             left: 'prev,next today',
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,listMonth',
           }}
+          footerToolbar={isMobile ? {
+            center: 'dayGridMonth,listWeek',
+          } : false}
           buttonText={{
             today: '今日',
             month: '月',
             week: '週',
             list: 'リスト',
+            listWeek: '週',
           }}
           events={calendarEvents}
           eventClick={handleEventClick}
           dateClick={handleDateClick}
           height="auto"
           eventDisplay="block"
-          dayMaxEvents={3}
+          dayMaxEvents={isMobile ? 2 : 3}
           eventClassNames="cursor-pointer text-xs"
         />
       </div>
