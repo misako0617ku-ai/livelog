@@ -56,10 +56,10 @@ export default function FcSettingsPage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/fc-memberships').then(r => r.json()),
-      supabase.from('artists').select('id, name, image_url, bandsintown_id, created_at').order('name'),
+      supabase.from('artists').select('*').order('name'),
     ]).then(([membershipsData, { data: artistsData }]) => {
       setMemberships(Array.isArray(membershipsData) ? membershipsData : [])
-      setArtists(artistsData ?? [])
+      setArtists((artistsData ?? []) as unknown as Artist[])
       setLoading(false)
     })
   }, [])
